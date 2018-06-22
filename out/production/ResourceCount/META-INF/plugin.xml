@@ -1,19 +1,27 @@
 <idea-plugin>
   <id>com.niorgai</id>
   <name>Android Resource Usage Count</name>
-  <version>1.0</version>
+  <version>2.1</version>
   <vendor email="jianqiu.sysu@gmail.com" url="https://github.com/niorgai/Android-Resource-Usage-Count">Github</vendor>
 
   <description><![CDATA[
-    Count for android resource usage and show in each line. <br>
+    Count for android resource usage and show in each line. <br> <br>
     0 - grey color <br>
     1 - blue color <br>
-    other - red color <br>
+    other - red color <br> <br>
+
+    If count not show <br>
+    Try to edit / reopen it <br> <br>
 
     <img src="http://7sbqys.com1.z0.glb.clouddn.com/resouce_count_plugin_example.jpeg" width="400" height="200"/>
     ]]></description>
 
   <change-notes><![CDATA[
+      #2.1<br>
+      Add setting to only show zero count<br> <br>
+
+      #2.0<br>
+      You can custom color in Preferences - Other Settings - Android Resource Usage Count <br>
 
     ]]>
   </change-notes>
@@ -23,18 +31,21 @@
 
   <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
        on how to target different products -->
-  <depends optional="true">com.intellij.modules.java</depends>
-  <depends optional="true">com.intellij.modules.ultimate</depends>
-  <depends optional="true">com.intellij.modules.androidstudio</depends>
+  <depends optional="true">com.intellij.modules.lang</depends>
 
   <extensions defaultExtensionNs="com.intellij">
     <codeInsight.lineMarkerProvider language="XML" implementationClass="UsageCountLineProvider"/>
+    <applicationConfigurable instance="CountColorConfiguration"/>
 
     <!-- Add your extensions here -->
   </extensions>
 
   <actions>
 
+    <action id="FindUsageAction" class="FindUsageAction" text="Find Usage" description="Start Find">
+      <add-to-group group-id="AnalyzeMenu" anchor="last"/>
+    </action>
   </actions>
+
 
 </idea-plugin>

@@ -1,26 +1,19 @@
 import com.intellij.codeHighlighting.Pass;
 import com.intellij.codeInsight.daemon.LineMarkerInfo;
 import com.intellij.codeInsight.daemon.LineMarkerProvider;
-import com.intellij.find.findUsages.FindUsagesHandler;
-import com.intellij.find.findUsages.FindUsagesOptions;
 import com.intellij.openapi.editor.markup.GutterIconRenderer;
 import com.intellij.openapi.editor.markup.SeparatorPlacement;
-import com.intellij.openapi.util.Factory;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlTag;
-import com.intellij.ui.JBColor;
-import com.intellij.usages.Usage;
-import com.intellij.usages.UsageSearcher;
-import com.intellij.util.Processor;
+import compat.FindUsagesCompat;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import utils.PropertiesUtils;
+import utils.ResourceUsageCountUtils;
 
-import javax.swing.*;
 import java.awt.*;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class UsageCountLineProvider implements LineMarkerProvider {
 
@@ -31,9 +24,10 @@ public class UsageCountLineProvider implements LineMarkerProvider {
             return null;
         }
         int count = findTagUsage((XmlTag) psiElement);
-        LineMarkerInfo info = new LineMarkerInfo(psiElement, psiElement.getTextRange(), new MyIcon(count), Pass.UPDATE_ALL, null, null, GutterIconRenderer.Alignment.RIGHT);
-        info.separatorPlacement = SeparatorPlacement.BOTTOM;
-        return info;
+        if (PropertiesUtils.isOnlyShowZeroCount()) {
+            return count == 0 ? new MyLineMarkerInfo(psiElement, count) : new MyLineMarkerInfo(psiElement, -1);
+        }
+        return new MyLineMarkerInfo(psiElement, count);
     }
 
     @Override
@@ -41,12 +35,22 @@ public class UsageCountLineProvider implements LineMarkerProvider {
 
     }
 
-    private class MyIcon implements Icon {
+    private class MyLineMarkerInfo extends LineMarkerInfo<PsiElement> {
+
+        public MyLineMarkerInfo(PsiElement element, int count) {
+            super(element, element.getTextRange(), new MyIcon(count), Pass.UPDATE_ALL, null, null, GutterIconRenderer.Alignment.RIGHT);
+            separatorPlacement = SeparatorPlacement.BOTTOM;
+        }
+
+    }
+
+    private class MyIcon extends com.intellij.util.ui.EmptyIcon {
 
         private int count;
         private int length;
 
         MyIcon(int count) {
+            super(8, 8);
             this.count = count;
             int temp = count;
             length ++;
@@ -58,8 +62,11 @@ public class UsageCountLineProvider implements LineMarkerProvider {
 
         @Override
         public void paintIcon(Component c, Graphics g, int i, int j) {
-            g.setColor(count <= 0 ? JBColor.GRAY : count == 1 ? JBColor.BLUE : JBColor.RED);
-            g.drawString(String.valueOf(count), i, j);
+            if (count == -1) {
+                return;
+            }
+            g.setColor(count <= 0 ? PropertiesUtils.getZeroColor() : count == 1 ? PropertiesUtils.getOneColor() : PropertiesUtils.getOtherColor());
+            g.drawString(String.valueOf(count), i, (int)(j + getIconHeight() + 1.5));
         }
 
         @Override
@@ -69,35 +76,13 @@ public class UsageCountLineProvider implements LineMarkerProvider {
 
         @Override
         public int getIconHeight() {
-            return 0;
+            return 8;
         }
     }
 
     private int findTagUsage(XmlTag element) {
-        final FindUsagesHandler handler = FindUsageUtils.getFindUsagesHandler(element, element.getProject());
-        if (handler != null) {
-            final FindUsagesOptions findUsagesOptions = handler.getFindUsagesOptions();
-            final PsiElement[] primaryElements = handler.getPrimaryElements();
-            final PsiElement[] secondaryElements = handler.getSecondaryElements();
-            Factory factory = new Factory() {
-                public UsageSearcher create() {
-                    return FindUsageUtils.createUsageSearcher(primaryElements, secondaryElements, handler, findUsagesOptions, (PsiFile) null);
-                }
-            };
-            UsageSearcher usageSearcher = (UsageSearcher)factory.create();
-            final AtomicInteger mCount = new AtomicInteger(0);
-            usageSearcher.generate(new Processor<Usage>() {
-                @Override
-                public boolean process(Usage usage) {
-                    if (ResourceUsageCountUtils.isUsefulUsageToCount(usage)) {
-                        mCount.incrementAndGet();
-                    }
-                    return true;
-                }
-            });
-            return mCount.get();
-        }
-        return 0;
+        return FindUsagesCompat.findUsage(element);
     }
+
 
 }
